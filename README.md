@@ -1,5 +1,16 @@
 # EPEX day-ahead price prediction
 
+> **About this fork**: This is a fork of the original [EpexPredictor](https://github.com/b3nn0/EpexPredictor).
+> The main addition here is optional **EU ETS (carbon allowance) price** and **coal price** input features, to
+> improve forecast accuracy for regions whose prices are driven by fossil-fuel (merit-order) generation — measured for **DE**.
+>
+> **Known issues / caveats:**
+> - ETS and coal prices are scraped from [investing.com](https://www.investing.com/), whose terms of service may prohibit automated fetching and redistribution of their data. Use and redistribute at your own risk; keep any cached datasets out of version control.
+> - These features are experimental and currently validated for **DE only**; results for other regions are not yet measured.
+> - A separate local `.secret` file (or `EPEXPREDICTOR_ENTSOE_API_KEY` env var) is used for the ENTSO-E API key — never commit it.
+>
+> This fork is not affiliated with the original project and will not be merged upstream.
+
 This is a simple statistical model to predict EPEX day-ahead prices based on various parameters.
 It works to a reasonably good degree. Better than many of the commercial solutions.
 This repository includes
@@ -66,23 +77,22 @@ Remarks:
 - Tests were done with historical weather data. If the weather forecast is wrong, performance might be slightly worse in practice
 
 Results (1-day ahead prediction, in ct/kWh):
-| Region | Gas only |          | Gas + ETS |          | Gas + coal |          | Gas + ETS + coal |          |
-|--------|----------|----------|-----------|----------|------------|----------|------------------|----------|
-|        | MAE      | RMSE     | MAE       | RMSE     | MAE        | RMSE     | MAE              | RMSE     |
-| DE     | 1.73     | 2.72     | 1.73      | 2.72     | 1.62       | 2.49     | 1.60             | 2.45     |
-| AT     | -        | -        | -         | -        | -          | -        | -                | -        |
-| BE     | -        | -        | -         | -        | -          | -        | -                | -        |
-| NL     | -        | -        | -         | -        | -          | -        | -                | -        |
-| SE1    | -        | -        | -         | -        | -          | -        | -                | -        |
-| SE2    | -        | -        | -         | -        | -          | -        | -                | -        |
-| SE3    | -        | -        | -         | -        | -          | -        | -                | -        |
-| SE4    | -        | -        | -         | -        | -          | -        | -                | -        |
-| DK1    | -        | -        | -         | -        | -          | -        | -                | -        |
-| DK2    | -        | -        | -         | -        | -          | -        | -                | -        |
-| ES     | -        | -        | -         | -        | -          | -        | -                | -        |
-| PT     | -        | -        | -         | -        | -          | -        | -                | -        |
+| Region | Gas + ETS + coal (MAE) | Gas + ETS + coal (RMSE) |
+|--------|------------------------|-------------------------|
+| DE     | 1.60                   | 2.45                    |
+| AT     | -                      | -                       |
+| BE     | -                      | -                       |
+| NL     | -                      | -                       |
+| SE1    | -                      | -                       |
+| SE2    | -                      | -                       |
+| SE3    | -                      | -                       |
+| SE4    | -                      | -                       |
+| DK1    | -                      | -                       |
+| DK2    | -                      | -                       |
+| ES     | -                      | -                       |
+| PT     | -                      | -                       |
 
-The breakdown is only available for DE. Adding ETS alone gives little benefit; the main improvement comes from the coal price input.
+The breakdown is only available for DE with the coal and ETS price features enabled. Adding ETS alone gives little benefit; the main improvement comes from the coal price input.
 
 Some observations:
 - At night, predictions are typically within 0.5 ct/kWh
