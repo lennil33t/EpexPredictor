@@ -137,6 +137,34 @@ def sample_entsoe_data():
     return df
 
 
+@pytest.fixture
+def sample_ets_data():
+    """Create sample ETS price data DataFrame."""
+    dates = pd.date_range(
+        start="2025-11-01",
+        end="2025-11-02",
+        freq="15min",
+        tz="UTC"
+    )
+    df = pd.DataFrame({"etsprice": [75.0] * len(dates)}, index=dates)
+    df.index.name = "time"
+    return df
+
+
+@pytest.fixture
+def sample_coal_data():
+    """Create sample coal price data DataFrame."""
+    dates = pd.date_range(
+        start="2025-11-01",
+        end="2025-11-02",
+        freq="15min",
+        tz="UTC"
+    )
+    df = pd.DataFrame({"coalprice": [150.0] * len(dates)}, index=dates)
+    df.index.name = "time"
+    return df
+
+
 
 @pytest.fixture
 def mock_aiohttp_response():
@@ -164,7 +192,7 @@ def extended_price_data():
 
 @pytest.fixture
 def mocked_predictor(
-    sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data, extended_price_data
+    sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data, sample_ets_data, sample_coal_data, extended_price_data
 ):
     """Create a PricePredictor with all stores mocked."""
     from predictor.model.pricepredictor import PricePredictor
@@ -174,4 +202,6 @@ def mocked_predictor(
     predictor.pricestore.get_data = AsyncMock(return_value=sample_price_data)
     predictor.auxstore.get_data = AsyncMock(return_value=sample_aux_data)
     predictor.entsoestore.get_data = AsyncMock(return_value=sample_entsoe_data)
+    predictor.etsstore.get_data = AsyncMock(return_value=sample_ets_data)
+    predictor.coalstore.get_data = AsyncMock(return_value=sample_coal_data)
     return predictor

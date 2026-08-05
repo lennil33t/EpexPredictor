@@ -22,6 +22,8 @@ class PriceRegion:
 
     use_entsoe_load_forecast: bool = True
     use_de_nat_gas_price: bool = True
+    use_ets_price: bool = False
+    use_coal_price: bool = False
     holidays: list[HolidayBase] = None # type:ignore # one entry for each regional holiday set, e.g. one for BW, one for BY, ...
     
 
@@ -65,6 +67,7 @@ PRICE_REGIONS[PriceRegionName.DE] = PriceRegion(
     bidding_zone_energycharts="DE-LU",
     bidding_zone_entsoe="DE_LU",
     use_entsoe_load_forecast=False, # Seems to be good in back testing, but worse in practice..
+    use_coal_price=False,
     latitudes=[48.4, 49.7, 51.3, 52.8, 53.8, 54.1],
     longitudes=[9.3, 11.3, 8.6, 12.0, 8.1, 11.6]
 )
@@ -168,7 +171,7 @@ PRICE_REGIONS[PriceRegionName.DK2] = PriceRegion(
 PRICE_REGIONS[PriceRegionName.ES] = PriceRegion(
     country_code="ES",
     timezone=TZ_CENTRAL_EUROPEAN,
-    bidding_zone_energycharts=None,
+    bidding_zone_energycharts="ES",
     bidding_zone_entsoe="ES",
     latitudes=[36.72, 37.26, 36.84, 43.46, 41.12, 39.47],
     longitudes=[-4.42, -6.94, -2.46, -3.81, 1.25, -0.38],
@@ -177,7 +180,7 @@ PRICE_REGIONS[PriceRegionName.ES] = PriceRegion(
 PRICE_REGIONS[PriceRegionName.PT] = PriceRegion(
     country_code="PT",
     timezone=TZ_CENTRAL_EUROPEAN,
-    bidding_zone_energycharts=None,
+    bidding_zone_energycharts="PT",
     bidding_zone_entsoe="PT",
     latitudes=[41.15, 39.74, 38.72, 37.02],
     longitudes=[-8.61, -8.81, -9.14, -7.93],

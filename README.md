@@ -195,3 +195,9 @@ refresh_interval: 10
 
 [evcc](https://evcc.io/) is an open-source EV charging controller that can optimize charging based on electricity prices.
 It now has native support for EpexPredictor, see [docs](https://docs.evcc.io/docs/tariffs#epex-predictor-predicted-epex-spot-prices)
+
+## Publishing Notes
+
+- Do not commit cached datasets from `predictor/data/` or other generated `*.json.gz` files.
+- Keep `EPEXPREDICTOR_ENTSOE_API_KEY` in a local `.secret` file or environment variable.
+- Review the current terms for Open-Meteo, ENTSO-E, Energy-Charts, and Investing.com before redistributing derived datasets.

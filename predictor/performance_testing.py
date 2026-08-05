@@ -7,6 +7,8 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 
+log = logging.getLogger(__name__)
+
 import model.pricepredictor as pred
 from model.priceregion import PriceRegion, PriceRegionName
 
@@ -48,7 +50,9 @@ async def load_data(p : pred.PricePredictor):
         p.pricestore.get_data(learn_start, END),
         p.entsoestore.get_data(learn_start, END),
         p.auxstore.get_data(learn_start, END),
-        p.gasstore.get_data(learn_start, END)
+        p.gasstore.get_data(learn_start, END),
+        p.etsstore.get_data(learn_start, END),
+        p.coalstore.get_data(learn_start, END)
     )
 
 def mse(df1: pd.Series, df2: pd.Series):
@@ -87,12 +91,28 @@ async def perform_test(region : PriceRegion):
         # Make sure training/prediction doesn't "cheat" with data that is known during performance testing, but not for actual forecasts
         predictor.pricestore.horizon_cutoff = learn_end
         predictor.gasstore.horizon_cutoff = learn_end
+        predictor.coalstore.horizon_cutoff = learn_end
 
-        await predictor.train(learn_start, learn_end - timedelta(minutes=15)) # exclusive last
-        prediction = await predictor.predict(d0, d3, False)
+        try:
+            await predictor.train(learn_start, learn_end - timedelta(minutes=15)) # exclusive last
+            prediction = await predictor.predict(d0, d3, False)
+        except Exception as e:
+            log.warning(f"{region.bidding_zone_entsoe}: train/predict failed at {learn_end}: {e}")
+            predictor.pricestore.horizon_cutoff = None
+            predictor.gasstore.horizon_cutoff = None
+            predictor.coalstore.horizon_cutoff = None
+            learn_start += timedelta(days=1)
+            learn_end += timedelta(days=1)
+            continue
 
         predictor.pricestore.horizon_cutoff = None
-        actual = await predictor.pricestore.get_data(d0, d3)
+        try:
+            actual = await predictor.pricestore.get_data(d0, d3)
+        except Exception as e:
+            log.warning(f"{region.bidding_zone_entsoe}: failed to get actual prices at {learn_end}: {e}")
+            learn_start += timedelta(days=1)
+            learn_end += timedelta(days=1)
+            continue
 
 
         d1_mae.append(mae(actual.loc[d0:d1]["price"], prediction.loc[d0:d1]["price"]))
@@ -109,6 +129,10 @@ async def perform_test(region : PriceRegion):
         print('.', end='')
 
     print()
+
+    if len(d1_mae) == 0:
+        print(f"{region.bidding_zone_entsoe}: no data available - skipping")
+        return None
 
     d1_mae_formatted = round(sum(d1_mae)/len(d1_mae), 2)
     d1_rmse_formatted = round(math.sqrt(sum(d1_mse)/len(d1_mse)), 2)
@@ -135,7 +159,8 @@ async def main():
         tasks.append(perform_test(region.to_region()))
     
     if PARALLELIZE:
-        results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = [r if not isinstance(r, Exception) else None for r in results]
     else:
         for t in tasks:
             results.append(await t)
@@ -144,7 +169,10 @@ async def main():
     print("| Region | MAE (ct/kWh) | RMSE (ct/kWh) |")
     print("|--------|--------------|---------------|")
     for i, res in enumerate(results):
-        print(f"| {REGIONS[i].ljust(5)}  | {str(res[0]).ljust(12)} | {str(res[1]).ljust(13)} |")
+        if res is None:
+            print(f"| {REGIONS[i].ljust(5)}  | {'N/A'.ljust(12)} | {'N/A'.ljust(13)} |")
+        else:
+            print(f"| {REGIONS[i].ljust(5)}  | {str(res[0]).ljust(12)} | {str(res[1]).ljust(13)} |")
 
 
 

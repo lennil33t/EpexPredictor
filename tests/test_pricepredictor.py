@@ -20,12 +20,18 @@ class TestPricePredictorInit:
         assert predictor.pricestore is not None
         assert predictor.auxstore is not None
         assert predictor.entsoestore is not None
+        assert predictor.etsstore is not None
+        assert predictor.gasstore is not None
+        assert predictor.coalstore is not None
 
     def test_init_with_storage_dir(self, sample_region, temp_storage_dir):
         """Test initialization with storage directory."""
         predictor = PricePredictor(sample_region, temp_storage_dir)
         assert predictor.weatherstore.storage_dir == temp_storage_dir
         assert predictor.pricestore.storage_dir == temp_storage_dir
+        assert predictor.etsstore.storage_dir == temp_storage_dir
+        assert predictor.gasstore.storage_dir == temp_storage_dir
+        assert predictor.coalstore.storage_dir == temp_storage_dir
 
 
 class TestPricePredictorGetLastKnownPrice:
@@ -81,24 +87,90 @@ class TestPricePredictorPrepareDataframe:
 
     @pytest.mark.asyncio
     async def test_prepare_dataframe_combines_data(
-        self, sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data
+        self, sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data, sample_ets_data, sample_coal_data
     ):
         """Test that prepare_dataframe combines all data sources."""
-        predictor = PricePredictor(sample_region)
+        original_use_ets_price = sample_region.use_ets_price
+        original_use_coal_price = sample_region.use_coal_price
+        sample_region.use_ets_price = True
+        sample_region.use_coal_price = True
+        try:
+            predictor = PricePredictor(sample_region)
 
-        # Mock the stores to return our sample data
-        predictor.weatherstore.get_data = AsyncMock(return_value=sample_weather_data)
-        predictor.pricestore.get_data = AsyncMock(return_value=sample_price_data)
-        predictor.auxstore.get_data = AsyncMock(return_value=sample_aux_data)
-        predictor.entsoestore.get_data = AsyncMock(return_value=sample_entsoe_data)
+            # Mock the stores to return our sample data
+            predictor.weatherstore.get_data = AsyncMock(return_value=sample_weather_data)
+            predictor.pricestore.get_data = AsyncMock(return_value=sample_price_data)
+            predictor.auxstore.get_data = AsyncMock(return_value=sample_aux_data)
+            predictor.entsoestore.get_data = AsyncMock(return_value=sample_entsoe_data)
+            predictor.etsstore.get_data = AsyncMock(return_value=sample_ets_data)
+            predictor.coalstore.get_data = AsyncMock(return_value=sample_coal_data)
 
-        start = datetime(2025, 11, 1, tzinfo=timezone.utc)
-        end = datetime(2025, 11, 2, tzinfo=timezone.utc)
+            start = datetime(2025, 11, 1, tzinfo=timezone.utc)
+            end = datetime(2025, 11, 2, tzinfo=timezone.utc)
 
-        result = await predictor.prepare_dataframe(start, end)
+            result = await predictor.prepare_dataframe(start, end)
 
-        assert result is not None
-        assert not result.empty
+            assert result is not None
+            assert not result.empty
+            assert "etsprice" in result.columns
+            assert "coalprice" in result.columns
+        finally:
+            sample_region.use_ets_price = original_use_ets_price
+            sample_region.use_coal_price = original_use_coal_price
+
+    @pytest.mark.asyncio
+    async def test_prepare_dataframe_skips_ets_when_disabled(
+        self, sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data, sample_ets_data
+    ):
+        """Test that ETS prices are only included when enabled for the region."""
+        original_use_ets_price = sample_region.use_ets_price
+        sample_region.use_ets_price = False
+        try:
+            predictor = PricePredictor(sample_region)
+
+            predictor.weatherstore.get_data = AsyncMock(return_value=sample_weather_data)
+            predictor.pricestore.get_data = AsyncMock(return_value=sample_price_data)
+            predictor.auxstore.get_data = AsyncMock(return_value=sample_aux_data)
+            predictor.entsoestore.get_data = AsyncMock(return_value=sample_entsoe_data)
+            predictor.etsstore.get_data = AsyncMock(return_value=sample_ets_data)
+
+            start = datetime(2025, 11, 1, tzinfo=timezone.utc)
+            end = datetime(2025, 11, 2, tzinfo=timezone.utc)
+
+            result = await predictor.prepare_dataframe(start, end)
+
+            assert result is not None
+            assert "etsprice" not in result.columns
+            predictor.etsstore.get_data.assert_not_called()
+        finally:
+            sample_region.use_ets_price = original_use_ets_price
+
+    @pytest.mark.asyncio
+    async def test_prepare_dataframe_skips_coal_when_disabled(
+        self, sample_region, sample_weather_data, sample_price_data, sample_aux_data, sample_entsoe_data, sample_coal_data
+    ):
+        """Test that coal prices are only included when enabled for the region."""
+        original_use_coal_price = sample_region.use_coal_price
+        sample_region.use_coal_price = False
+        try:
+            predictor = PricePredictor(sample_region)
+
+            predictor.weatherstore.get_data = AsyncMock(return_value=sample_weather_data)
+            predictor.pricestore.get_data = AsyncMock(return_value=sample_price_data)
+            predictor.auxstore.get_data = AsyncMock(return_value=sample_aux_data)
+            predictor.entsoestore.get_data = AsyncMock(return_value=sample_entsoe_data)
+            predictor.coalstore.get_data = AsyncMock(return_value=sample_coal_data)
+
+            start = datetime(2025, 11, 1, tzinfo=timezone.utc)
+            end = datetime(2025, 11, 2, tzinfo=timezone.utc)
+
+            result = await predictor.prepare_dataframe(start, end)
+
+            assert result is not None
+            assert "coalprice" not in result.columns
+            predictor.coalstore.get_data.assert_not_called()
+        finally:
+            sample_region.use_coal_price = original_use_coal_price
 
 
 class TestPricePredictorTrain:

@@ -2,13 +2,13 @@ import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from math import nan
-import os
 
 from entsoe import entsoe
 import pandas as pd
 
 from .datastore import DataStore
 from .priceregion import PriceRegion
+from .secrets import load_secret
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class EntsoeDataStore(DataStore):
         if not self.region.use_entsoe_load_forecast:
             self.data = self.data.drop(self.data.index)
         self.update_lock = asyncio.Lock()
-        self.entsoe_api_key = os.getenv("EPEXPREDICTOR_ENTSOE_API_KEY", None)
+        self.entsoe_api_key = load_secret("EPEXPREDICTOR_ENTSOE_API_KEY")
         if self.entsoe_api_key is None or len(self.entsoe_api_key) == 0:
             self.entsoe_api_key = None
             log.warning("EPEXPREDICTOR_ENTSOE_API_KEY is not defined. Skipping Entso-E data. Expect reduced model performance")

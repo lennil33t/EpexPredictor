@@ -10,11 +10,13 @@ import pandas as pd
 import lightgbm as lgb
 
 from .auxdatastore import AuxDataStore
+from .coalpricestore import CoalPriceStore
 from .priceregion import PriceRegion
 from .pricestore import PriceStore
 from .weatherstore import WeatherStore
 from .entsoedatastore import EntsoeDataStore
 from .gaspricestore import GasPriceStore
+from .etspricestore import EtsPriceStore
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +28,8 @@ class PricePredictor:
     entsoestore: EntsoeDataStore
     auxstore: AuxDataStore
     gasstore: GasPriceStore
+    etsstore: EtsPriceStore
+    coalstore: CoalPriceStore
 
     traindata: pd.DataFrame | None = None
 
@@ -38,6 +42,8 @@ class PricePredictor:
         self.auxstore = AuxDataStore(region, storage_dir)
         self.entsoestore = EntsoeDataStore(region, storage_dir)
         self.gasstore = GasPriceStore(region, storage_dir)
+        self.etsstore = EtsPriceStore(region, storage_dir)
+        self.coalstore = CoalPriceStore(region, storage_dir)
 
     async def load_from_persistence(self):
         await asyncio.gather(
@@ -45,12 +51,14 @@ class PricePredictor:
             self.pricestore.load(),
             self.auxstore.load(),
             self.entsoestore.load(),
-            self.gasstore.load()
+            self.gasstore.load(),
+            self.etsstore.load(),
+            self.coalstore.load()
         )
         return self
     
     def last_data_update(self) -> datetime:
-        return max(self.weatherstore.last_updated, self.pricestore.last_updated, self.entsoestore.last_updated, self.gasstore.last_updated)
+        return max(self.weatherstore.last_updated, self.pricestore.last_updated, self.entsoestore.last_updated, self.gasstore.last_updated, self.etsstore.last_updated, self.coalstore.last_updated)
 
     def use_datastores_from(self, other: "PricePredictor"):
         assert self.region.bidding_zone_entsoe == other.region.bidding_zone_entsoe
@@ -59,6 +67,8 @@ class PricePredictor:
         self.auxstore = other.auxstore
         self.entsoestore = other.entsoestore
         self.gasstore = other.gasstore
+        self.etsstore = other.etsstore
+        self.coalstore = other.coalstore
 
     def is_trained(self) -> bool:
         return self.predictor is not None
@@ -136,6 +146,16 @@ class PricePredictor:
             gasprices = gasprices.reindex(weather.index).ffill()
             df = pd.concat([df, gasprices], axis=1, sort=True)
 
+        if self.region.use_ets_price:
+            etsprices = await self.etsstore.get_data(start, end)
+            etsprices = etsprices.reindex(weather.index).ffill()
+            df = pd.concat([df, etsprices], axis=1, sort=True)
+
+        if self.region.use_coal_price:
+            coalprices = await self.coalstore.get_data(start, end)
+            coalprices = coalprices.reindex(weather.index).ffill()
+            df = pd.concat([df, coalprices], axis=1, sort=True)
+
         df = pd.concat([df, prices], axis=1, sort=True)
         df = df[actual_start:]
         return df
@@ -159,6 +179,8 @@ class PricePredictor:
         self.auxstore.drop_before(cutoff)
         self.entsoestore.drop_before(cutoff)
         self.gasstore.drop_before(cutoff)
+        self.etsstore.drop_before(cutoff)
+        self.coalstore.drop_before(cutoff)
 
 
 

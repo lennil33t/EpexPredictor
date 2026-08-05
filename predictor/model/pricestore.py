@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-import os
 from typing import override
 
 import aiohttp
@@ -12,6 +11,7 @@ import pandas as pd
 
 from .datastore import DataStore
 from .priceregion import PriceRegion
+from .secrets import load_secret
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ class PriceStore(DataStore):
         super().__init__(region, storage_dir, "prices_v3")
         self.update_lock = asyncio.Lock()
 
-        self.entsoe_api_key = os.getenv("EPEXPREDICTOR_ENTSOE_API_KEY", None)
+        self.entsoe_api_key = load_secret("EPEXPREDICTOR_ENTSOE_API_KEY")
         if self.entsoe_api_key is None or len(self.entsoe_api_key) == 0:
             self.entsoe_api_key = None
             log.warning("EPEXPREDICTOR_ENTSOE_API_KEY is not defined. Not all bidding zones are available.")

@@ -1,5 +1,7 @@
 *.json.gz
 data/
+.secret
+predictor/data/
 
 
 # Byte-compiled / optimized / DLL files

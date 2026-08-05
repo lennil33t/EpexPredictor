@@ -55,33 +55,30 @@ class GasPriceStore(DataStore):
                 url = "https://www.bundesnetzagentur.de/DE/Gasversorgung/aktuelle_gasversorgung/_svg/Gaspreise/Gaspreise.html"
                 log.info(f"{self.region.bidding_zone_entsoe}: Fetching natural gas price data: {url}")
 
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url) as resp:
-                        txt = await resp.text()
-                        try:
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(url) as resp:
+                            txt = await resp.text()
                             # Super ugly: prices are directly embedded in the HTML as JS objects.. ugly hackery to extract the wanted data
                             pattern = re.compile(r"data_myChartId_.*_export\s*= [\w\W]*?labels: (?P<labels>.*?\])[\w\W]*?THE Future \(M\+1\)[\w\W]*?data: (?P<data>.*?\])")
                             for match in pattern.finditer(txt):
                                 timestamps = json.loads(match.group("labels").replace("'", "\""))
                                 prices = json.loads(match.group("data").replace(" ,", "null,"))
 
-                            # data = json.loads(txt)
-                            # timestamps = data["labels"]
-                            # prices = data["datasets"][1]["data"]
-                            pricedict = {}
+                                pricedict = {}
 
-                            for i, t in enumerate(timestamps):
-                                gasprice = prices[i]
-                                if isinstance(gasprice, float): # sometimes "null" ??
-                                    time = pd.to_datetime(datetime.strptime(t, "%d.%m.%Y").replace(tzinfo=timezone.utc))
-                                    pricedict[time] = gasprice
-                            
-                            df = pd.DataFrame.from_dict(pricedict, orient="index", columns=["gasprice"])
-                            df = df.resample('15min').ffill()
+                                for i, t in enumerate(timestamps):
+                                    gasprice = prices[i]
+                                    if isinstance(gasprice, float): # sometimes "null" ??
+                                        time = pd.to_datetime(datetime.strptime(t, "%d.%m.%Y").replace(tzinfo=timezone.utc))
+                                        pricedict[time] = gasprice
+                                
+                                df = pd.DataFrame.from_dict(pricedict, orient="index", columns=["gasprice"])
+                                df = df.resample('15min').ffill()
 
-                            updated = self._update_data(df) or updated
-                        except Exception as e:
-                            log.warning(f"{self.region.bidding_zone_entsoe}: failed to update gas prices. Probably no data available for given time range - ignoring error: {e}")
+                                updated = self._update_data(df) or updated
+                except Exception as e:
+                    log.warning(f"{self.region.bidding_zone_entsoe}: failed to update gas prices. Probably no data available for given time range - ignoring error: {e}")
 
                 # gen_missing_date_ranges is only used to detect if there is anything missing at all. API only allows downloading all prices at once, so we break
                 # after one iteration

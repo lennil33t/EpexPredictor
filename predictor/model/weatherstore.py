@@ -52,6 +52,10 @@ class WeatherStore(DataStore):
                         data = await resp.text()
 
                         data = json.loads(data)
+                        if isinstance(data, dict) and "error" in data:
+                            raise ValueError(f"Open-Meteo API error: {data.get('reason', 'unknown')}")
+                        if not isinstance(data, list):
+                            raise ValueError(f"Unexpected response format: {type(data).__name__}")
                         frames = []
                         for i, fc in enumerate(data):
                             df = pd.DataFrame()
@@ -74,7 +78,7 @@ class WeatherStore(DataStore):
                         updated = self._update_data(df) or updated
             except Exception as e:
                 log.warning(f"{self.region.bidding_zone_entsoe}: Failed to fetch weather data: error: {str(e)}")
-                raise e
+                return False
             finally:
                 if updated:
                     log.info(f"{self.region.bidding_zone_entsoe}: weather data updated")

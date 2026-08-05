@@ -124,8 +124,13 @@ class DataStore:
 
     def get_last_known(self) -> datetime|None:
         data = self.data
+        if len(data) == 0:
+            return None
         if self.horizon_cutoff:
-            data = data[:self.horizon_cutoff]
+            try:
+                data = data[:self.horizon_cutoff]
+            except TypeError:
+                data = data.loc[:self.horizon_cutoff]
         if len(data) == 0:
             return None
         return data.index[-1]
