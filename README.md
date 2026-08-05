@@ -88,6 +88,27 @@ Some observations:
 - Extreme peaks due to "Dunkelflaute" are correctly detected, but estimation of the exact price is a challenge (e.g. the model might predict 75ct while reality is 60ct or vice versa)
 - High PV noons are usually correctly detected with good accuracy
 
+### DE results with ETS & coal price features
+
+Optional ETS allowance prices and coal price features, when enabled alongside natural gas, further improve prediction accuracy for DE (1-day ahead, 1-day evaluation, as reported by the performance test suite):
+
+| Input features | Iterations | 1d MAE | 1d RMSE | 2d MAE | 2d RMSE | 3d MAE | 3d RMSE |
+|----------------|-----------:|-------:|--------:|-------:|--------:|-------:|--------:|
+| Gas only       | 362        | 1.73   | 2.72    | 1.87   | 2.91    | 1.90 | 2.96     |
+| Gas + ETS      | 362        | 1.73   | 2.72    | 1.87   | 2.91    | 1.91 | 3.00     |
+| Gas + coal     | 120        | 1.62   | 2.49    | 1.69   | 2.65    | 1.73 | 2.69     |
+| Gas + ETS + coal | 122      | 1.60   | 2.45    | 1.70   | 2.64    | 1.72 | 2.69     |
+
+Best setup by horizon:
+
+| Horizon | Best setup          | MAE     | RMSE    |
+|---------|---------------------|--------:|--------:|
+| 1 day   | Gas + ETS + coal    | 1.60    | 2.45    |
+| 2 days  | Gas + coal / Gas + ETS + coal | 1.69 / 1.70 | 2.65 / 2.64 |
+| 3 days  | Gas + ETS + coal    | 1.72    | 2.69    |
+
+Adding ETS alone gives little benefit; the main improvement comes from the coal price input. All values in ct/kWh.
+
 
 ### Current forecast (DE)
 ![image](https://epexpredictor.batzill.com/eval_plot?region=DE&transparent=false&width=1024&height=512)
