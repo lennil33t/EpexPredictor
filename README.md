@@ -77,22 +77,22 @@ Remarks:
 - Tests were done with historical weather data. If the weather forecast is wrong, performance might be slightly worse in practice
 
 Results (1-day ahead prediction, in ct/kWh):
-| Region | Gas + ETS + coal (MAE) | Gas + ETS + coal (RMSE) |
-|--------|------------------------|-------------------------|
-| DE     | 1.60                   | 2.45                    |
-| AT     | -                      | -                       |
-| BE     | -                      | -                       |
-| NL     | -                      | -                       |
-| SE1    | -                      | -                       |
-| SE2    | -                      | -                       |
-| SE3    | -                      | -                       |
-| SE4    | -                      | -                       |
-| DK1    | -                      | -                       |
-| DK2    | -                      | -                       |
-| ES     | -                      | -                       |
-| PT     | -                      | -                       |
+| Region | Gas only (MAE, ct/kWh) | Gas only (RMSE, ct/kWh) | Gas + ETS + coal (MAE, ct/kWh) | Gas + ETS + coal (RMSE, ct/kWh) |
+|--------|------------------------|-------------------------|--------------------------------|---------------------------------|
+| DE     | 1.73                   | 2.72                    | 1.60                           | 2.45                            |
+| AT     | 1.98                   | 3.12                    | -                              | -                               |
+| BE     | 1.83                   | 2.75                    | -                              | -                               |
+| NL     | 1.74                   | 2.79                    | -                              | -                               |
+| SE1    | 1.63                   | 2.79                    | -                              | -                               |
+| SE2    | 1.47                   | 2.6                     | -                              | -                               |
+| SE3    | 1.99                   | 2.81                    | -                              | -                               |
+| SE4    | 2.34                   | 3.22                    | -                              | -                               |
+| DK1    | 1.9                    | 2.83                    | -                              | -                               |
+| DK2    | 2.15                   | 3.26                    | -                              | -                               |
+| ES     | 1.65                   | 2.25                    | -                              | -                               |
+| PT     | 2.07                   | 2.76                    | -                              | -                               |
 
-The breakdown is only available for DE with the coal and ETS price features enabled. Adding ETS alone gives little benefit; the main improvement comes from the coal price input.
+The Gas + ETS + coal breakdown is only available for DE, where the coal/ETS features are enabled. Adding ETS alone gives little benefit; the main improvement comes from the coal price input.
 
 Some observations:
 - At night, predictions are typically within 0.5 ct/kWh
