@@ -1,13 +1,12 @@
 # EPEX day-ahead price prediction
 
-> **About this fork**: This is a fork of the original [EpexPredictor](https://github.com/b3nn0/EpexPredictor).
+> **About this fork**: This is an experimental fork of the original [EpexPredictor](https://github.com/b3nn0/EpexPredictor).
 > The main addition here is optional **EU ETS (carbon allowance) price** and **coal price** input features, to
-> improve forecast accuracy for regions whose prices are driven by fossil-fuel (merit-order) generation — measured for **DE**.
+> improve forecast accuracy for regions whose prices are driven by fossil-fuel (merit-order) generation — but currently only experimenting with **DE**.
 >
 > **Known issues / caveats:**
 > - ETS and coal prices are scraped from [investing.com](https://www.investing.com/), whose terms of service may prohibit automated fetching and redistribution of their data. Use and redistribute at your own risk; keep any cached datasets out of version control.
 > - These features are experimental and currently validated for **DE only**; results for other regions are not yet measured.
-> - A separate local `.secret` file (or `EPEXPREDICTOR_ENTSOE_API_KEY` env var) is used for the ENTSO-E API key — never commit it.
 >
 > This fork is not affiliated with the original project and will not be merged upstream.
 
@@ -83,28 +82,21 @@ Remarks:
 - The model uses a 180-day rolling training window
 - Tests were done with historical weather data. If the weather forecast is wrong, performance might be slightly worse in practice
 
-Results (1/2/3-day ahead prediction):
+For a time range of 2025-09-01 to 2026-09-01, with 362 iterations:
+
+Before (single-stage baseline, natural gas prices):
+
 | Region | 1d RMSE | 1d MAE | 2d RMSE | 2d MAE | 3d RMSE | 3d MAE |
 |--------|---------|--------|---------|--------|---------|--------|
-| DE     | 2.93    | 1.73   | 3.15    | 1.88   | 3.17    | 1.91   |
-| AT     | 3.11    | 1.98   | 3.35    | 2.17   | 3.42    | 2.24   |
-| BE     | 3.15    | 1.84   | 3.39    | 2.0    | 3.43    | 2.02   |
-| NL     | 3.04    | 1.75   | 3.21    | 1.87   | 3.25    | 1.91   |
-| SE1    | 2.7     | 1.68   | 3.01    | 1.91   | 3.11    | 1.97   |
-| SE2    | 2.7     | 1.65   | 3.07    | 1.91   | 3.16    | 1.97   |
-| SE3    | 2.87    | 2.02   | 3.11    | 2.23   | 3.12    | 2.26   |
-| SE4    | 3.31    | 2.34   | 3.52    | 2.55   | 3.55    | 2.58   |
-| DK1    | 2.79    | 1.79   | 2.99    | 1.92   | 3.06    | 1.97   |
-| DK2    | 3.06    | 1.94   | 3.25    | 2.11   | 3.27    | 2.13   |
-| ES     | 2.35    | 1.7    | 2.66    | 1.96   | 2.79    | 2.06   |
-| PT     | 2.47    | 1.8    | 2.82    | 2.12   | 2.94    | 2.22   |
+| DE     | 3.05    | 1.89   | 3.28    | 2.03   | 3.40    | 2.09   |
 
-The separate ETS and coal feature benchmark is available for DE only:
-| Region | Gas + ETS + coal (MAE) | Gas + ETS + coal (RMSE) |
-|--------|------------------------|-------------------------|
-| DE     | 1.60                   | 2.45                    |
+After (single-stage baseline, natural gas + ETS + coal prices):
 
-Adding ETS alone gives little benefit; the main improvement comes from the coal price input.
+| Region | 1d RMSE | 1d MAE | 2d RMSE | 2d MAE | 3d RMSE | 3d MAE |
+|--------|---------|--------|---------|--------|---------|--------|
+| DE     | 3.01    | 1.87   | 3.27    | 2.02   | 3.34    | 2.07   |
+
+
 
 Some observations:
 - At night, predictions are typically within 0.5 ct/kWh
