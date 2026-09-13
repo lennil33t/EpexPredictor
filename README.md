@@ -5,6 +5,8 @@
 > improve forecast accuracy for regions whose prices are driven by fossil-fuel (merit-order) generation — measured for **DE**.
 >
 > **Known issues / caveats:**
+> 
+> **Results are not reproducible!!!**
 > - ETS and coal prices are scraped from [investing.com](https://www.investing.com/), whose terms of service may prohibit automated fetching and redistribution of their data. Use and redistribute at your own risk; keep any cached datasets out of version control.
 > - These features are experimental and currently validated for **DE only**; results for other regions are not yet measured.
 > - A separate local `.secret` file (or `EPEXPREDICTOR_ENTSOE_API_KEY` env var) is used for the ENTSO-E API key — never commit it.
@@ -79,7 +81,7 @@ Remarks:
 Results (1-day ahead prediction, in ct/kWh):
 | Region | Gas only (MAE, ct/kWh) | Gas only (RMSE, ct/kWh) | Gas + ETS + coal (MAE, ct/kWh) | Gas + ETS + coal (RMSE, ct/kWh) |
 |--------|------------------------|-------------------------|--------------------------------|---------------------------------|
-| DE     | 1.73                   | 2.72                    | 1.60                           | 2.45                            |
+| DE     | 1.73                   | 2.72                    | -                              | -                               |
 | AT     | 1.98                   | 3.12                    | -                              | -                               |
 | BE     | 1.83                   | 2.75                    | -                              | -                               |
 | NL     | 1.74                   | 2.79                    | -                              | -                               |
