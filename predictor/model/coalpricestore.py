@@ -51,7 +51,10 @@ class CoalPriceStore(DataStore):
             return updated
 
     async def _fetch_coal_prices(self, start: datetime, end: datetime) -> pd.DataFrame:
-        start_str = start.strftime("%Y-%m-%d")
+        # Request a little history before the range so weekend/holiday gaps can
+        # be forward-filled from the previous trading day.
+        query_start = start - timedelta(days=7)
+        start_str = query_start.strftime("%Y-%m-%d")
         end_str = end.strftime("%Y-%m-%d")
 
         def _scrape():
@@ -63,22 +66,24 @@ class CoalPriceStore(DataStore):
             import time
 
             options = Options()
-            options.add_argument("--headless")
+            options.add_argument("--headless=new")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0")
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option("useAutomationExtension", False)
 
             service = Service(EdgeChromiumDriverManager().install())
-            driver = webdriver.Edge(service=service, options=options)
-            driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-                "source": "Object.defineProperty(navigator, 'webdriver', { get: () => undefined })"
-            })
-
+            driver = None
             try:
+                driver = webdriver.Edge(service=service, options=options)
+                driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+                    "source": "Object.defineProperty(navigator, 'webdriver', { get: () => undefined })"
+                })
+
                 driver.get("https://www.investing.com/commodities/newcastle-coal-futures-historical-data")
                 time.sleep(3)
 
@@ -88,14 +93,23 @@ class CoalPriceStore(DataStore):
                 except Exception:
                     pass
 
-                date_div = driver.find_element(By.XPATH, "//div[contains(@class, 'flex') and contains(text(), '/')]")
+                date_div = driver.find_element(
+                    By.XPATH,
+                    "//div[contains(@class, 'rounded') and contains(@class, 'border') "
+                    "and contains(., ' - ') and contains(., '/')]"
+                )
                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", date_div)
                 time.sleep(0.5)
                 date_div.click()
                 time.sleep(2)
 
-                picker = driver.find_element(By.CSS_SELECTOR, "div.absolute.right-0.top-\\[42px\\]")
-                date_inputs = picker.find_elements(By.CSS_SELECTOR, 'input[type="date"]')
+                picker = driver.find_element(
+                    By.XPATH,
+                    "//div[contains(@class, 'absolute') and .//input]"
+                )
+                date_inputs = picker.find_elements(By.CSS_SELECTOR, "input")
+                if len(date_inputs) < 2:
+                    raise RuntimeError("Investing.com date picker did not expose two date inputs")
 
                 driver.execute_script("""
                     const inputs = arguments[0];
@@ -109,8 +123,11 @@ class CoalPriceStore(DataStore):
                 """, date_inputs, start_str, end_str)
                 time.sleep(0.5)
 
-                apply_span = picker.find_element(By.XPATH, ".//span[text()='Apply']")
-                driver.execute_script("arguments[0].click();", apply_span)
+                apply_button = picker.find_element(
+                    By.XPATH,
+                    ".//*[self::button or self::span][normalize-space()='Apply']"
+                )
+                driver.execute_script("arguments[0].click();", apply_button)
                 time.sleep(5)
 
                 tables = driver.find_elements(By.TAG_NAME, "table")
@@ -132,9 +149,11 @@ class CoalPriceStore(DataStore):
 
             finally:
                 try:
-                    driver.quit()
+                    if driver is not None:
+                        driver.quit()
                 except Exception:
                     pass
+                service.stop()
 
         rows = await asyncio.to_thread(_scrape)
 
@@ -160,7 +179,17 @@ class CoalPriceStore(DataStore):
 
         df = pd.DataFrame({"coalprice": prices}, index=pd.DatetimeIndex(dates, name="time"))
         df = df.resample("15min").ffill()
-        return df
+
+        requested_index = pd.date_range(
+            start=pd.to_datetime(start).floor("15min"),
+            end=pd.to_datetime(end).ceil("15min"),
+            freq="15min",
+            tz="UTC",
+        )
+        # Keep the preceding trading-day row in the index so a range beginning
+        # on a weekend can be filled from that value.
+        combined_index = df.index.union(requested_index).sort_values()
+        return df.reindex(combined_index).ffill().reindex(requested_index)
 
     @override
     def get_next_horizon_revalidation_time(self) -> datetime | None:
